@@ -12,33 +12,15 @@ Imports Microsoft.Office.Interop
 '#####################################################################################
 
 Module ExcelPrint
-    Public Sub MakeExcelDoc(ByVal lv As ListView, Optional ByVal saveasrptname As String = "", Optional ByVal print as boolean = false)
+	Public Sub MakeExcelDoc(ByVal lv As ListView, Optional visible as boolean = True, Optional rptpath as string = "", 
+			Optional printrpt as boolean = false)
         Try
             'Create a new excel application, workbook, and worksheet
             Dim oXL As New Excel.Application
-            Dim oWB As Excel.Workbook
-            Dim osheet As Excel.Worksheet
+            Dim oWB As Excel.Workbook = oXL.Workbooks.Add
+            Dim osheet As Excel.Worksheet = oWB.ActiveSheet
             Dim i As Integer
-            Dim j As Integer
-
-            'Make the oWB equal to a new workbook in the excel application
-            oWB = oXL.Workbooks.Add
             
-            'Make osheet equal to the active excel worksheet in oWB
-            osheet = CType(oWB.ActiveSheet, Excel.Worksheet)
-
-            'Set Column Widths
-            Dim k As Integer = 0
-            While k < lv.Columns.Count
-                'Go through every column in the listview and ensure that the column widths in the excel spreadsheet are roughly
-                'the same width as the listview column widths.
-                With osheet.Range(Chr(65 + k) & "1:" & Chr(65 + k) & "1")
-                    .EntireColumn.ColumnWidth = (lv.Columns(k).Width) / 6
-                    k += 1
-                End With
-            End While
-            'End Set Widths
-
             'Add Listview Data
             For i = 0 To lv.Columns.Count - 1
                 'Make the header row (the first row) values equal to the values in the listview columns.
@@ -47,7 +29,7 @@ Module ExcelPrint
             
             Dim count As Integer = 0
             For i = 0 To lv.Items.Count - 1
-                For j = 0 To lv.Items(i).SubItems.Count - 1
+                For j as integer = 0 To lv.Items(i).SubItems.Count - 1
                     'Add Text To Cells From Listview items and subitems (listview subitem 0 is the same as listview.text)
                     osheet.Cells(i + 2, j + 1) = lv.Items(i).SubItems(j).Text
                 Next
@@ -62,12 +44,6 @@ Module ExcelPrint
             'entered.
             Dim last As String = lastchar & coun + 1
             
-            'Format all cells with values in them to have a font type of arial and a font size of 12.
-            With osheet.Range("A1", last)
-                .Font.Name = "Arial"
-                .Font.Size = 12
-            End With
-
             'Format the header row so all the values are bold, the background color is light gray, a balck border
             'surrounds every particular header and the vertical and horizontal alignments are set to be centered.
             With osheet.Range("A1", lastchar & "1")
@@ -82,6 +58,13 @@ Module ExcelPrint
                 .Font.Bold = True
                 .VerticalAlignment = Excel.XlVAlign.xlVAlignCenter
                 .HorizontalAlignment = Excel.XlHAlign.xlHAlignCenter
+            End With
+
+            'Format all cells with values in them to have a font type of arial and a font size of 12.
+            With osheet.Range("A1", last)
+                .Font.Name = "Arial"
+                .Font.Size = 12
+                .Columns.AutoFit()
             End With
 
             '''''''''''Page Setup values
@@ -101,36 +84,34 @@ Module ExcelPrint
             End With
 
             'If a report name is provided...
-            If rptname <> "" Then
-                'Make the excel application a background process (invisible)
-                oXL.Visible = False
-                'Grab the user's documents directory and determine the excel file path.
+			If rptpath <> "" Then
+				'Grab the user's documents directory and determine the excel file path.
                 Dim yourdir As String = My.Computer.FileSystem.SpecialDirectories.MyDocuments & "\"
                 Dim filename As String = yourdir & saveasrptname & ".xlsx"
+
                 'Save the excel document
                 oWB.SaveAs(Filename:=filename)
-                'If print is equal to true...
-                If print = True Then
-                    'print a copy of the excel document
-                    oWB.PrintOutEx()
-                    'Provide a 2 second buffer timer to ensure that the print command gets loaded into the print queue
-                    Dim tmr As New System.Timers.Timer(2000)
-                    tmr.AutoReset = False
-                    tmr.Enabled = True
-                    tmr.Close()
-                End If
-                'Close the excel workbook.
-                oWB.Close(False)
-                'Alert the user that the report has been generated.
-                MessageBox.Show("Report Generated")
-            else
-                'If no filename is provided, open the excel application on the user's desktop.
-                oXL.Visible = True
-                If print = True Then
-                    'If the print value is set to true, print a copy of the excel document
-                    oWB.PrintOutEx()
-                end if
+                
+				MessageBox.Show("Report Saved")
             End If
+
+			'If print is equal to true...
+            If print = True Then
+                'print a copy of the excel document
+                oWB.PrintOutEx()
+
+				MessageBox.Show("Printing Report")
+
+                'Provide a 2 second buffer timer to ensure that the print command gets loaded into the print queue
+                Task.Delay(2000).Wait()
+            End If
+
+			oXL.Visible = visible
+			
+			'If visible is set to false, close the workbook
+			If visible = false
+				oWB.Close(False)
+			End If
 
         Catch ex As Exception
             'If anything goes awry during this process, display the error message on the user's machine.
